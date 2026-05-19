@@ -6,6 +6,9 @@ docker-compose.yml
 npm-debug.log
 .gitignore
 
+# uploads
+/public
+
 # env
 .env
 .env.local
