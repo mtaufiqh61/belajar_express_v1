@@ -85,7 +85,7 @@ web-server:
 ### 4. Start Services with Docker Compose
 
 ```bash
-docker-compose up
+docker-compose up --build -d
 ```
 
 This will:
