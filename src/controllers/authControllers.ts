@@ -115,25 +115,82 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
     }
 }
 
+// export const fnRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const { refreshToken } = req.body;
+//         req.log.info('Request refresh token');
+
+//         const decoded =  jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY || "default_refresh_secret_key") as JwtPayload;
+
+//         // Invalidate old access token session
+//         await invalidateRefreshToken(refreshToken, decoded.id); // Invalidate old access token session
+
+//         // Generate new access token
+//         const newAccessToken = jwt.sign(
+//             { id: decoded.id, email: decoded.email },
+//             process.env.SECRET_KEY || "default_secret_key",
+//             { expiresIn: '30m'}
+//         );
+
+//         // Update session with new access token
+//         await validateRefreshToken(newAccessToken, refreshToken, decoded.id); // Validate refresh token and update session
+
+//         req.log.info({ email: decoded.email }, 'Refresh token success');
+
+//         return res.status(200).json({
+//             message: "Token refreshed successfully",
+//             status: "OK",
+//             data: {
+//                 accessToken: newAccessToken
+//             }
+//         })
+//     } catch (err: any) {
+//         if(err.name === 'JsonWebTokenError') {
+//             throw new AppError('Invalid refresh token', 401, [{ field: 'refreshToken', message: 'Invalid refresh token' }] as any);
+//             req.log.warn(err.name, 'Invalid refresh token attempt');
+//         } else if (err.name === 'TokenExpiredError') {
+//             throw new AppError('Refresh token expired', 401, [{ field: 'refreshToken', message: 'Refresh token expired' }] as any);
+//             req.log.warn('Expired refresh token attempt');
+//         }
+//         req.log.error(err, 'Refresh token failed');
+//         next(err);
+//     }
+// }
+
 export const fnRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { refreshToken } = req.body;
         req.log.info('Request refresh token');
 
-        const decoded =  jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY || "default_refresh_secret_key") as JwtPayload;
+        if (!refreshToken) {
+            throw new AppError('Refresh token is required', 400, [{ field: 'refreshToken', message: 'Refresh token is required' }] as any);
+        }
+
+        let decoded: JwtPayload;
+
+        try {
+            decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY || "default_refresh_secret_key") as JwtPayload;
+        } catch (jwtErr: any) {
+            if (jwtErr.name === 'JsonWebTokenError') {
+                throw new AppError('Invalid refresh token', 401, [{ field: 'refreshToken', message: 'Invalid refresh token' }] as any);
+            } else if (jwtErr.name === 'TokenExpiredError') {
+                throw new AppError('Refresh token expired', 401, [{ field: 'refreshToken', message: 'Refresh token expired' }] as any);
+            }
+            throw jwtErr;
+        }
 
         // Invalidate old access token session
-        await invalidateRefreshToken(refreshToken, decoded.id); // Invalidate old access token session
+        await invalidateRefreshToken(refreshToken, decoded.id);
 
         // Generate new access token
         const newAccessToken = jwt.sign(
             { id: decoded.id, email: decoded.email },
             process.env.SECRET_KEY || "default_secret_key",
-            { expiresIn: '30m'}
+            { expiresIn: '30m' }
         );
 
         // Update session with new access token
-        await validateRefreshToken(newAccessToken, refreshToken, decoded.id); // Validate refresh token and update session
+        await validateRefreshToken(newAccessToken, refreshToken, decoded.id);
 
         req.log.info({ email: decoded.email }, 'Refresh token success');
 
@@ -143,15 +200,8 @@ export const fnRefreshToken = async (req: Request, res: Response, next: NextFunc
             data: {
                 accessToken: newAccessToken
             }
-        })
+        });
     } catch (err: any) {
-        if(err.name === 'JsonWebTokenError') {
-            throw new AppError('Invalid refresh token', 401, [{ field: 'refreshToken', message: 'Invalid refresh token' }] as any);
-            req.log.warn(err.name, 'Invalid refresh token attempt');
-        } else if (err.name === 'TokenExpiredError') {
-            throw new AppError('Refresh token expired', 401, [{ field: 'refreshToken', message: 'Refresh token expired' }] as any);
-            req.log.warn('Expired refresh token attempt');
-        }
         req.log.error(err, 'Refresh token failed');
         next(err);
     }

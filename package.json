@@ -11,7 +11,7 @@
     "migration": "npx sequelize-cli db:migrate",
     "docker:build": "docker build -t belajar-express:1.0.0 ."
   },
-  "author": "humblegod_",
+  "author": "mtaufiqh61",
   "license": "ISC",
   "description": "",
   "jest": {
